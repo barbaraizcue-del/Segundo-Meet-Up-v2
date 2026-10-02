@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Empresa — Segundo Meet Up Sercotec</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-icon">🏢</div>
+            <div>
+                <h1>Portal Empresa</h1>
+                <p>Registra tu disponibilidad de horarios para reunirte con los CDN</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Registrar Disponibilidad</h2>
+
+            <div class="form-group">
+                <label for="empresa-select">Selecciona tu Empresa:</label>
+                <select id="empresa-select" onchange="onEmpresaChange()">
+                    <option value="">-- Selecciona una empresa --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="empresa-email">Correo de Contacto:</label>
+                <input type="email" id="empresa-email" placeholder="contacto@empresa.com">
+            </div>
+
+            <div id="disponibilidad-previa" style="display:none;" class="info-box">
+                <strong>ℹ️ Ya tienes disponibilidad registrada.</strong> Si guardas de nuevo, se reemplazará la anterior.
+            </div>
+
+            <div id="empresa-fechas-container" style="display:none;">
+                <h3>Selecciona tus horarios disponibles:</h3>
+                <p style="font-size:13px; color:#777; margin-bottom:15px;">Haz click en cada horario en que puedes reunirte. Puedes seleccionar todos los que necesites.</p>
+                <div id="empresa-fechas"></div>
+                <button class="btn btn-primary" onclick="guardarDisponibilidad()">
+                    💾 GUARDAR DISPONIBILIDAD
+                </button>
+            </div>
+
+            <div id="empresa-mensaje" class="mensaje"></div>
+        </div>
+
+        <div style="text-align:center; margin-top:10px;">
+            <a href="index.html" style="color:#999; font-size:13px; text-decoration:none;">← Volver al inicio</a>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+        // ===== FIREBASE CONFIG =====
+        const firebaseConfig = {
+            apiKey: "AIzaSyBjWa9R8vFPb9uWZ8sf7_ZIOkq5HOidXOQ",
+            authDomain: "segundo-meet-up.firebaseapp.com",
+            projectId: "segundo-meet-up",
+            storageBucket: "segundo-meet-up.firebasestorage.app",
+            messagingSenderId: "272487400395",
+            appId: "1:272487400395:web:137a021c570298aab66c4e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // ===== DATA =====
+        const EMPRESAS = [
+            "Abastible", "Aeropuerto", "Aliservice", "Andina (Emboteladora y Transporte)",
+            "Angloamerican", "Antofagasta Minerals", "Agrosuper", "Aramark",
+            "BCI", "BHP Chile", "Cencosud (Jumbo / Santa Isabel)", "CMPC",
+            "Cran Chile", "Dirección ChileCompra", "Empresas Arauco", "Enel Chile / Engie",
+            "Enex", "Lipigas", "Local Shop", "Mall Plaza",
+            "Mercado Libre", "Metro", "Simón de Cirene", "SMU (Unimarc)",
+            "Sura", "Viña Chocalán", "Walmart Chile"
+        ];
+
+        function obtenerFechas() {
+            const fechas = [];
+            for (let i = 4; i <= 29; i++) {
+                const fecha = new Date(2026, 10, i);
+                if (fecha.getDay() !== 0 && fecha.getDay() !== 6) {
+                    fechas.push(`2026-11-${String(i).padStart(2, '0')}`);
+                }
+            }
+            return fechas;
+        }
+
+        function obtenerHorarios() {
+            const horarios = [];
+            for (let h = 8; h <= 17; h++) {
+                for (let m of [0, 30]) {
+                    if (h === 8 && m === 0) continue;
+                    if (h === 17 && m === 30) continue;
+                    horarios.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+                }
+            }
+            return horarios;
+        }
+
+        const FECHAS = obtenerFechas();
+        const HORARIOS = obtenerHorarios();
+
+        // ===== INICIALIZAR SELECTS =====
+        const selectEmpresa = document.getElementById('empresa-select');
+        EMPRESAS.forEach(emp => {
+            const opt = document.createElement('option');
+            opt.value = emp;
+            opt.textContent = emp;
+            selectEmpresa.appendChild(opt);
+        });
+
+        // ===== ON EMPRESA CHANGE =====
+        window.onEmpresaChange = async function() {
+            const empresa = document.getElementById('empresa-select').value;
+            if (!empresa) {
+                document.getElementById('empresa-fechas-container').style.display = 'none';
+                return;
+            }
+
+            // Verificar si ya tiene disponibilidad
+            const docRef = doc(db, 'disponibilidades', empresa);
+            const docSnap = await getDoc(docRef);
+
+            const previaDiv = document.getElementById('disponibilidad-previa');
+            if (docSnap.exists()) {
+                previaDiv.style.display = 'block';
+                // Pre-cargar email
+                document.getElementById('empresa-email').value = docSnap.data().email || '';
+            } else {
+                previaDiv.style.display = 'none';
+            }
+
+            // Renderizar fechas y horarios
+            renderizarFechas(docSnap.exists() ? docSnap.data().horarios || [] : []);
+            document.getElementById('empresa-fechas-container').style.display = 'block';
+        };
+
+        function renderizarFechas(horariosSeleccionados = []) {
+            const contenedor = document.getElementById('empresa-fechas');
+            contenedor.innerHTML = '';
+
+            FECHAS.forEach(fecha => {
+                const grupoDiv = document.createElement('div');
+                grupoDiv.className = 'fecha-grupo';
+
+                const fechaObj = new Date(fecha + 'T12:00:00');
+                const nombreDia = fechaObj.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
+                grupoDiv.innerHTML = `<div class="fecha-titulo">📅 ${nombreDia}</div>`;
+
+                const horariosDiv = document.createElement('div');
+                horariosDiv.className = 'horarios-grid';
+
+                HORARIOS.forEach(hora => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'horario-btn';
+                    btn.textContent = hora;
+                    btn.dataset.fecha = fecha;
+                    btn.dataset.hora = hora;
+
+                    // Si ya estaba seleccionado, marcarlo
+                    const yaSeleccionado = horariosSeleccionados.some(h => h.fecha === fecha && h.hora === hora);
+                    if (yaSeleccionado) btn.classList.add('selected');
+
+                    btn.onclick = () => btn.classList.toggle('selected');
+                    horariosDiv.appendChild(btn);
+                });
+
+                grupoDiv.appendChild(horariosDiv);
+                contenedor.appendChild(grupoDiv);
+            });
+        }
+
+        // ===== GUARDAR DISPONIBILIDAD =====
+        window.guardarDisponibilidad = async function() {
+            const empresa = document.getElementById('empresa-select').value;
+            const email = document.getElementById('empresa-email').value;
+
+            if (!empresa) { mostrarMensaje('empresa-mensaje', '❌ Selecciona una empresa', false); return; }
+            if (!email) { mostrarMensaje('empresa-mensaje', '❌ Ingresa un email de contacto', false); return; }
+
+            const botones = document.querySelectorAll('#empresa-fechas .horario-btn.selected');
+            if (botones.length === 0) {
+                mostrarMensaje('empresa-mensaje', '❌ Selecciona al menos un horario disponible', false);
+                return;
+            }
+
+            const horarios = [];
+            botones.forEach(btn => horarios.push({ fecha: btn.dataset.fecha, hora: btn.dataset.hora }));
+
+            const btn = document.querySelector('.btn-primary');
+            btn.disabled = true;
+            btn.textContent = '⏳ Guardando...';
+
+            try {
+                await setDoc(doc(db, 'disponibilidades', empresa), {
+                    empresa,
+                    email,
+                    horarios,
+                    timestamp: new Date().toISOString()
+                });
+
+                mostrarMensaje('empresa-mensaje', `✅ ¡Listo! ${empresa} registró ${horarios.length} horarios disponibles correctamente.`, true);
+                document.getElementById('disponibilidad-previa').style.display = 'block';
+
+            } catch (error) {
+                mostrarMensaje('empresa-mensaje', '❌ Error al guardar. Intenta nuevamente.', false);
+                console.error(error);
+            }
+
+            btn.disabled = false;
+            btn.textContent = '💾 GUARDAR DISPONIBILIDAD';
+        };
+
+        function mostrarMensaje(id, texto, exito) {
+            const div = document.getElementById(id);
+            div.className = `mensaje show ${exito ? 'success' : 'error'}`;
+            div.textContent = texto;
+            setTimeout(() => div.classList.remove('show'), 6000);
+        }
+    </script>
+</body>
+</html>

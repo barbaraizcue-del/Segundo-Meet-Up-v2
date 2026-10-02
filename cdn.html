@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal CDN — Segundo Meet Up Sercotec</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-icon">🤝</div>
+            <div>
+                <h1>Portal CDN</h1>
+                <p>Agenda tu reunión con una empresa ancla del Meet Up</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Agendar Reunión</h2>
+
+            <div class="form-group">
+                <label for="cdn-select">Selecciona tu CDN:</label>
+                <select id="cdn-select">
+                    <option value="">-- Selecciona tu CDN --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="cdn-email">Correo de Contacto:</label>
+                <input type="email" id="cdn-email" placeholder="tu.email@sercotec.cl">
+            </div>
+
+            <div class="form-group">
+                <label for="empresa-select">Selecciona la Empresa:</label>
+                <select id="empresa-select" onchange="onEmpresaChange()">
+                    <option value="">-- Selecciona una empresa --</option>
+                </select>
+            </div>
+
+            <div id="cargando-fechas" style="display:none;" class="loading">
+                <span class="spinner"></span> Cargando disponibilidad...
+            </div>
+
+            <div id="sin-disponibilidad" style="display:none;" class="warning-box">
+                ⚠️ Esta empresa aún no ha registrado su disponibilidad. Intenta más tarde.
+            </div>
+
+            <div id="fechas-container" style="display:none;">
+                <div class="form-group">
+                    <label for="fecha-select">Selecciona Fecha:</label>
+                    <select id="fecha-select" onchange="onFechaChange()">
+                        <option value="">-- Selecciona una fecha --</option>
+                    </select>
+                </div>
+
+                <div id="horarios-container" style="display:none;">
+                    <label>Horarios Disponibles:</label>
+                    <p style="font-size:12px; color:#999; margin: 4px 0 10px;">
+                        🟥 = Ocupado &nbsp; ⬜ = Libre
+                    </p>
+                    <div id="cdn-horarios" class="horarios-grid"></div>
+                </div>
+
+                <input type="hidden" id="horario-seleccionado">
+
+                <button class="btn btn-primary" onclick="agendarReunion()" id="btn-agendar" style="display:none;">
+                    ✅ CONFIRMAR REUNIÓN
+                </button>
+            </div>
+
+            <div id="cdn-mensaje" class="mensaje"></div>
+        </div>
+
+        <div style="text-align:center; margin-top:10px;">
+            <a href="index.html" style="color:#999; font-size:13px; text-decoration:none;">← Volver al inicio</a>
+        </div>
+    </div>
+
+    <!-- CONFIG -->
+    <script>
+        // Configuración de emails
+        window.RESEND_KEY = 're_ZmucnubR' + '_6i52cv8UMnyYi2o1cVZQZSUq';
+    </script>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+        // ===== FIREBASE CONFIG =====
+        const firebaseConfig = {
+            apiKey: "AIzaSyBjWa9R8vFPb9uWZ8sf7_ZIOkq5HOidXOQ",
+            authDomain: "segundo-meet-up.firebaseapp.com",
+            projectId: "segundo-meet-up",
+            storageBucket: "segundo-meet-up.firebasestorage.app",
+            messagingSenderId: "272487400395",
+            appId: "1:272487400395:web:137a021c570298aab66c4e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // ===== DATA =====
+        const EMPRESAS = [
+            "Abastible", "Aeropuerto", "Aliservice", "Andina (Emboteladora y Transporte)",
+            "Angloamerican", "Antofagasta Minerals", "Agrosuper", "Aramark",
+            "BCI", "BHP Chile", "Cencosud (Jumbo / Santa Isabel)", "CMPC",
+            "Cran Chile", "Dirección ChileCompra", "Empresas Arauco", "Enel Chile / Engie",
+            "Enex", "Lipigas", "Local Shop", "Mall Plaza",
+            "Mercado Libre", "Metro", "Simón de Cirene", "SMU (Unimarc)",
+            "Sura", "Viña Chocalán", "Walmart Chile"
+        ];
+
+        const CDN_LIST = [
+            "CDN Aconcagua", "CDN Angol", "CDN Antofagasta", "CDN Alto Hospicio",
+            "CDN Arica", "CDN Aysén", "CDN Calama", "CDN Cañete",
+            "CDN Centro Cooperativo", "CDN Chillán", "CDN Chiloé", "CDN Chacabuco",
+            "CDN Choapa", "CDN Concepción", "CDN Constitución", "CDN Copiapó",
+            "CDN Coquimbo", "CDN Coyaique", "CDN Curicó", "CDN Del Ranco",
+            "CDN Estación Central", "CDN Inakeyu", "CDN Independencia", "CDN Iquique",
+            "CDN La Florida", "CDN La Serena", "CDN Las Condes", "CDN Linares",
+            "CDN Los Angeles", "CDN Maipú", "CDN Marga Marga", "CDN Melipilla",
+            "CDN Ñuñoa", "CDN Osorno", "CDN Limarí", "CDN San Pablo",
+            "CDN Puente Alto", "CDN Puerto Montt", "CDN Puerto Natales", "CDN Puerto Varas",
+            "CDN Punta Arenas", "CDN Quilicura", "CDN Quillota", "CDN Rancagua",
+            "CDN Rapa Nui", "CDN San Antonio", "CDN San Bernardo", "CDN San Carlos",
+            "CDN San Fernando", "CDN San Pedro de Atacama", "CDN Santa Cruz", "CDN Santiago",
+            "CDN Talagante", "CDN Talca", "CDN Talcahuano", "CDN Tamaruga",
+            "CDN Temuco", "CDN Valdivia", "CDN Vallenar", "CDN Valparaíso",
+            "CDN Villarrica", "CDN Viña del Mar"
+        ];
+
+        // ===== ESTADO =====
+        let disponibilidadEmpresa = null;
+        let horariosOcupados = [];
+
+        // ===== INICIALIZAR SELECTS =====
+        const selectCDN = document.getElementById('cdn-select');
+        CDN_LIST.forEach(cdn => {
+            const opt = document.createElement('option');
+            opt.value = cdn;
+            opt.textContent = cdn;
+            selectCDN.appendChild(opt);
+        });
+
+        const selectEmpresa = document.getElementById('empresa-select');
+        EMPRESAS.forEach(emp => {
+            const opt = document.createElement('option');
+            opt.value = emp;
+            opt.textContent = emp;
+            selectEmpresa.appendChild(opt);
+        });
+
+        // ===== ON EMPRESA CHANGE =====
+        window.onEmpresaChange = async function() {
+            const empresa = document.getElementById('empresa-select').value;
+
+            // Reset
+            document.getElementById('fechas-container').style.display = 'none';
+            document.getElementById('sin-disponibilidad').style.display = 'none';
+            document.getElementById('horarios-container').style.display = 'none';
+            document.getElementById('btn-agendar').style.display = 'none';
+            document.getElementById('horario-seleccionado').value = '';
+            document.getElementById('fecha-select').innerHTML = '<option value="">-- Selecciona una fecha --</option>';
+
+            if (!empresa) return;
+
+            document.getElementById('cargando-fechas').style.display = 'block';
+
+            try {
+                // Cargar disponibilidad de la empresa
+                const docSnap = await getDoc(doc(db, 'disponibilidades', empresa));
+
+                if (!docSnap.exists() || !docSnap.data().horarios?.length) {
+                    document.getElementById('sin-disponibilidad').style.display = 'block';
+                    document.getElementById('cargando-fechas').style.display = 'none';
+                    return;
+                }
+
+                disponibilidadEmpresa = docSnap.data();
+
+                // Cargar horarios ocupados de esta empresa
+                const reunionesRef = collection(db, 'reuniones');
+                const q = query(reunionesRef, where('empresa', '==', empresa));
+                const querySnap = await getDocs(q);
+                horariosOcupados = querySnap.docs.map(d => ({
+                    fecha: d.data().fecha,
+                    hora: d.data().hora
+                }));
+
+                // Poblar select de fechas (solo las que tienen horarios disponibles)
+                const fechasUnicas = [...new Set(disponibilidadEmpresa.horarios.map(h => h.fecha))].sort();
+                const selectFecha = document.getElementById('fecha-select');
+                fechasUnicas.forEach(fecha => {
+                    const fechaObj = new Date(fecha + 'T12:00:00');
+                    const nombre = fechaObj.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
+
+                    // Verificar si quedan horarios libres en esa fecha
+                    const horariosEnFecha = disponibilidadEmpresa.horarios.filter(h => h.fecha === fecha);
+                    const libres = horariosEnFecha.filter(h => !horariosOcupados.some(o => o.fecha === h.fecha && o.hora === h.hora));
+
+                    const opt = document.createElement('option');
+                    opt.value = fecha;
+                    opt.textContent = `${nombre} (${libres.length} horarios libres)`;
+                    if (libres.length === 0) {
+                        opt.textContent += ' — COMPLETO';
+                        opt.style.color = '#bbb';
+                    }
+                    selectFecha.appendChild(opt);
+                });
+
+                document.getElementById('fechas-container').style.display = 'block';
+
+            } catch (error) {
+                console.error(error);
+                mostrarMensaje('cdn-mensaje', '❌ Error al cargar disponibilidad. Intenta nuevamente.', false);
+            }
+
+            document.getElementById('cargando-fechas').style.display = 'none';
+        };
+
+        // ===== ON FECHA CHANGE =====
+        window.onFechaChange = function() {
+            const fecha = document.getElementById('fecha-select').value;
+            document.getElementById('horario-seleccionado').value = '';
+            document.getElementById('btn-agendar').style.display = 'none';
+
+            if (!fecha || !disponibilidadEmpresa) {
+                document.getElementById('horarios-container').style.display = 'none';
+                return;
+            }
+
+            const horariosEnFecha = disponibilidadEmpresa.horarios
+                .filter(h => h.fecha === fecha)
+                .map(h => h.hora)
+                .sort();
+
+            const contenedor = document.getElementById('cdn-horarios');
+            contenedor.innerHTML = '';
+
+            horariosEnFecha.forEach(hora => {
+                const ocupado = horariosOcupados.some(o => o.fecha === fecha && o.hora === hora);
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `horario-btn ${ocupado ? 'ocupado' : ''}`;
+                btn.textContent = ocupado ? `${hora} 🔴` : hora;
+                btn.dataset.hora = hora;
+                btn.disabled = ocupado;
+
+                if (!ocupado) {
+                    btn.onclick = () => {
+                        document.querySelectorAll('#cdn-horarios .horario-btn').forEach(b => b.classList.remove('selected'));
+                        btn.classList.add('selected');
+                        document.getElementById('horario-seleccionado').value = hora;
+                        document.getElementById('btn-agendar').style.display = 'flex';
+                    };
+                }
+
+                contenedor.appendChild(btn);
+            });
+
+            document.getElementById('horarios-container').style.display = 'block';
+        };
+
+        // ===== AGENDAR REUNIÓN =====
+        window.agendarReunion = async function() {
+            const cdn = document.getElementById('cdn-select').value;
+            const cdnEmail = document.getElementById('cdn-email').value;
+            const empresa = document.getElementById('empresa-select').value;
+            const fecha = document.getElementById('fecha-select').value;
+            const hora = document.getElementById('horario-seleccionado').value;
+
+            if (!cdn) { mostrarMensaje('cdn-mensaje', '❌ Selecciona tu CDN', false); return; }
+            if (!cdnEmail) { mostrarMensaje('cdn-mensaje', '❌ Ingresa tu email', false); return; }
+            if (!empresa) { mostrarMensaje('cdn-mensaje', '❌ Selecciona una empresa', false); return; }
+            if (!hora) { mostrarMensaje('cdn-mensaje', '❌ Selecciona un horario', false); return; }
+
+            const btnAgendar = document.getElementById('btn-agendar');
+            btnAgendar.disabled = true;
+            btnAgendar.textContent = '⏳ Agendando...';
+
+            try {
+                // ===== VERIFICAR DUPLICADO EN TIEMPO REAL =====
+                const slotKey = `${empresa}_${fecha}_${hora}`.replace(/[^a-zA-Z0-9_]/g, '_');
+                const slotRef = doc(db, 'horarios_tomados', slotKey);
+                const slotSnap = await getDoc(slotRef);
+
+                if (slotSnap.exists()) {
+                    mostrarMensaje('cdn-mensaje', '❌ Lo sentimos, este horario fue tomado hace un momento. Por favor selecciona otro.', false);
+                    btnAgendar.disabled = false;
+                    btnAgendar.textContent = '✅ CONFIRMAR REUNIÓN';
+                    // Recargar horarios para mostrar el ocupado
+                    await onEmpresaChange();
+                    document.getElementById('empresa-select').dispatchEvent(new Event('change'));
+                    return;
+                }
+
+                // ===== GUARDAR REUNIÓN =====
+                const reunionId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                const reunion = {
+                    cdn,
+                    cdnEmail,
+                    empresa,
+                    empresaEmail: disponibilidadEmpresa?.email || '',
+                    fecha,
+                    hora,
+                    timestamp: new Date().toISOString()
+                };
+
+                // Guardar reunión y marcar slot como tomado (casi simultáneo)
+                await Promise.all([
+                    setDoc(doc(db, 'reuniones', reunionId), reunion),
+                    setDoc(slotRef, { empresa, fecha, hora, cdn, timestamp: new Date().toISOString() })
+                ]);
+
+                // ===== ENVIAR EMAIL =====
+                await enviarEmailConfirmacion(reunion);
+
+                mostrarMensaje('cdn-mensaje',
+                    `✅ ¡Reunión confirmada! ${cdn} se reunirá con ${empresa} el ${fecha} a las ${hora}. Se ha enviado un email de confirmación.`,
+                    true
+                );
+
+                // Reset formulario
+                document.getElementById('cdn-select').value = '';
+                document.getElementById('cdn-email').value = '';
+                document.getElementById('empresa-select').value = '';
+                document.getElementById('fechas-container').style.display = 'none';
+                document.getElementById('horarios-container').style.display = 'none';
+                document.getElementById('btn-agendar').style.display = 'none';
+
+            } catch (error) {
+                console.error(error);
+                mostrarMensaje('cdn-mensaje', '❌ Error al agendar. Intenta nuevamente.', false);
+            }
+
+            btnAgendar.disabled = false;
+            btnAgendar.textContent = '✅ CONFIRMAR REUNIÓN';
+        };
+
+        // ===== ENVIAR EMAIL CON RESEND =====
+        async function enviarEmailConfirmacion(reunion) {
+            try {
+                const RESEND_API_KEY = window.RESEND_KEY || '';
+
+                const htmlEmail = `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <div style="background: #c0392b; color: white; padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
+                            <h1 style="margin:0;">✅ Reunión Confirmada</h1>
+                            <p style="margin: 8px 0 0; opacity: 0.9;">Segundo Meet Up Sercotec 2026</p>
+                        </div>
+                        <div style="background: #f9f9f9; padding: 25px; border-radius: 0 0 8px 8px;">
+                            <h2 style="color: #333;">Detalles de tu reunión:</h2>
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <tr><td style="padding: 8px; font-weight: bold; color: #555;">CDN:</td><td style="padding: 8px;">${reunion.cdn}</td></tr>
+                                <tr style="background: #fff;"><td style="padding: 8px; font-weight: bold; color: #555;">Empresa:</td><td style="padding: 8px;">${reunion.empresa}</td></tr>
+                                <tr><td style="padding: 8px; font-weight: bold; color: #555;">Fecha:</td><td style="padding: 8px;">${reunion.fecha}</td></tr>
+                                <tr style="background: #fff;"><td style="padding: 8px; font-weight: bold; color: #555;">Hora:</td><td style="padding: 8px;">${reunion.hora}</td></tr>
+                            </table>
+                            <p style="color: #777; font-size: 13px; margin-top: 20px;">
+                                Este email fue enviado automáticamente por el Sistema de Agendamiento Sercotec.
+                            </p>
+                        </div>
+                    </div>
+                `;
+
+                // Email al CDN
+                if (reunion.cdnEmail) {
+                    await fetch('https://api.resend.com/emails', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${RESEND_API_KEY}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            from: 'Sercotec Meet Up <onboarding@resend.dev>',
+                            to: [reunion.cdnEmail],
+                            subject: `✅ Reunión confirmada: ${reunion.cdn} con ${reunion.empresa} — ${reunion.fecha} ${reunion.hora}`,
+                            html: htmlEmail
+                        })
+                    });
+                }
+
+                // Email a la Empresa
+                if (reunion.empresaEmail) {
+                    await fetch('https://api.resend.com/emails', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${RESEND_API_KEY}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            from: 'Sercotec Meet Up <onboarding@resend.dev>',
+                            to: [reunion.empresaEmail],
+                            subject: `📅 Nueva reunión agendada: ${reunion.cdn} el ${reunion.fecha} a las ${reunion.hora}`,
+                            html: htmlEmail
+                        })
+                    });
+                }
+
+            } catch (error) {
+                console.warn('Email no enviado (configura Resend API Key):', error);
+            }
+        }
+
+        function mostrarMensaje(id, texto, exito) {
+            const div = document.getElementById(id);
+            div.className = `mensaje show ${exito ? 'success' : 'error'}`;
+            div.textContent = texto;
+            if (exito) setTimeout(() => div.classList.remove('show'), 8000);
+        }
+    </script>
+</body>
+</html>

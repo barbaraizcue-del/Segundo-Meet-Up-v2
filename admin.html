@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin — Segundo Meet Up Sercotec</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        #login-panel { max-width: 400px; margin: 80px auto; }
+        .chart-container { position: relative; height: 280px; margin: 20px 0; }
+        .filtros { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; align-items: flex-end; }
+        .filtros select { width: auto; min-width: 180px; }
+        .filtros label { font-size: 12px; }
+        .empresa-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            background: #fde8e8;
+            color: #c0392b;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .cdn-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            background: #d6eaf8;
+            color: #1a5276;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .disponibilidad-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+        .chip { background: #f0f0f0; padding: 2px 8px; border-radius: 10px; font-size: 11px; color: #555; }
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 25px 0 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .tab-admin { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #eee; }
+        .tab-admin-btn {
+            padding: 9px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #999;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+        .tab-admin-btn.active { color: #c0392b; border-bottom-color: #c0392b; }
+        .tab-content-admin { display: none; }
+        .tab-content-admin.active { display: block; }
+    </style>
+</head>
+<body>
+
+    <!-- LOGIN -->
+    <div id="login-panel">
+        <div class="header" style="border-radius:12px; margin-bottom:20px;">
+            <div class="header-icon">⚙️</div>
+            <div>
+                <h1>Panel Administrador</h1>
+                <p>Segundo Meet Up Sercotec 2026</p>
+            </div>
+        </div>
+        <div class="card">
+            <h2>Acceso Seguro</h2>
+            <div class="form-group">
+                <label>Email administrador:</label>
+                <input type="email" id="admin-email" placeholder="admin@sercotec.cl" value="barbara.izcue@sercotec.cl">
+            </div>
+            <div class="form-group">
+                <label>Contraseña:</label>
+                <input type="password" id="admin-password" placeholder="Contraseña" onkeydown="if(event.key==='Enter') loginAdmin()">
+            </div>
+            <button class="btn btn-primary" onclick="loginAdmin()">🔐 INGRESAR</button>
+            <div id="login-error" class="mensaje"></div>
+        </div>
+        <div style="text-align:center; margin-top:10px;">
+            <a href="index.html" style="color:#999; font-size:13px; text-decoration:none;">← Volver al inicio</a>
+        </div>
+    </div>
+
+    <!-- PANEL ADMIN (oculto hasta login) -->
+    <div id="admin-panel" style="display:none;">
+        <div class="container">
+            <div class="header">
+                <div class="header-icon">⚙️</div>
+                <div>
+                    <h1>Panel Administrador</h1>
+                    <p>Segundo Meet Up Sercotec — Control total del sistema</p>
+                </div>
+            </div>
+
+            <!-- STATS -->
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-number" id="stat-reuniones">—</div>
+                    <div class="stat-label">Reuniones Agendadas</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="stat-empresas">—</div>
+                    <div class="stat-label">Empresas con Disponibilidad</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="stat-cdn">—</div>
+                    <div class="stat-label">CDN que han agendado</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="stat-slots">—</div>
+                    <div class="stat-label">Slots aún disponibles</div>
+                </div>
+            </div>
+
+            <!-- TABS -->
+            <div class="card">
+                <div class="tab-admin">
+                    <button class="tab-admin-btn active" onclick="cambiarTab('reuniones', this)">📋 Reuniones</button>
+                    <button class="tab-admin-btn" onclick="cambiarTab('disponibilidades', this)">🏢 Disponibilidades</button>
+                    <button class="tab-admin-btn" onclick="cambiarTab('graficos', this)">📊 Gráficos</button>
+                </div>
+
+                <!-- TAB: REUNIONES -->
+                <div id="tab-reuniones" class="tab-content-admin active">
+                    <div class="filtros">
+                        <div>
+                            <label>Filtrar por empresa:</label>
+                            <select id="filtro-empresa" onchange="filtrarTabla()">
+                                <option value="">Todas las empresas</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Filtrar por fecha:</label>
+                            <select id="filtro-fecha" onchange="filtrarTabla()">
+                                <option value="">Todas las fechas</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn btn-secondary" onclick="descargarCSVReuniones()">📥 Exportar CSV Reuniones</button>
+                        <button class="btn btn-secondary" onclick="descargarExcelReuniones()">📊 Exportar Excel</button>
+                        <button class="btn" style="background:#e74c3c; color:white; padding:9px 18px; font-size:13px;" onclick="limpiarTodo()">🗑️ Limpiar TODO</button>
+                    </div>
+
+                    <div id="cargando-reuniones" class="loading"><span class="spinner"></span> Cargando reuniones...</div>
+                    <div id="sin-reuniones" style="display:none;" class="info-box">Aún no hay reuniones agendadas.</div>
+
+                    <table id="tabla-reuniones" style="display:none;">
+                        <thead>
+                            <tr>
+                                <th>CDN</th>
+                                <th>Email CDN</th>
+                                <th>Empresa</th>
+                                <th>Email Empresa</th>
+                                <th>Fecha</th>
+                                <th>Hora</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-reuniones"></tbody>
+                    </table>
+                </div>
+
+                <!-- TAB: DISPONIBILIDADES -->
+                <div id="tab-disponibilidades" class="tab-content-admin">
+                    <div class="button-group">
+                        <button class="btn btn-secondary" onclick="descargarCSVDisponibilidades()">📥 Exportar CSV Disponibilidades</button>
+                    </div>
+                    <div id="cargando-disp" class="loading"><span class="spinner"></span> Cargando disponibilidades...</div>
+                    <div id="lista-disponibilidades"></div>
+                </div>
+
+                <!-- TAB: GRÁFICOS -->
+                <div id="tab-graficos" class="tab-content-admin">
+                    <div class="section-title">📊 Reuniones por Empresa</div>
+                    <div class="chart-container">
+                        <canvas id="chart-empresas"></canvas>
+                    </div>
+                    <div class="section-title">📊 Reuniones por Fecha</div>
+                    <div class="chart-container">
+                        <canvas id="chart-fechas"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align:right; margin-top:10px;">
+                <button class="btn btn-secondary" onclick="cerrarSesion()" style="font-size:12px; padding:7px 15px;">🚪 Cerrar sesión</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBjWa9R8vFPb9uWZ8sf7_ZIOkq5HOidXOQ",
+            authDomain: "segundo-meet-up.firebaseapp.com",
+            projectId: "segundo-meet-up",
+            storageBucket: "segundo-meet-up.firebasestorage.app",
+            messagingSenderId: "272487400395",
+            appId: "1:272487400395:web:137a021c570298aab66c4e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // ===== ESTADO GLOBAL =====
+        let todasReuniones = [];
+        let todasDisponibilidades = [];
+        let chartEmpresas = null;
+        let chartFechas = null;
+
+        // ===== AUTH STATE =====
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('login-panel').style.display = 'none';
+                document.getElementById('admin-panel').style.display = 'block';
+                cargarTodo();
+            } else {
+                document.getElementById('login-panel').style.display = 'block';
+                document.getElementById('admin-panel').style.display = 'none';
+            }
+        });
+
+        // ===== LOGIN =====
+        window.loginAdmin = async function() {
+            const email = document.getElementById('admin-email').value;
+            const password = document.getElementById('admin-password').value;
+            const errorDiv = document.getElementById('login-error');
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                errorDiv.className = 'mensaje show error';
+                errorDiv.textContent = '❌ Credenciales incorrectas. Verifica tu email y contraseña.';
+                setTimeout(() => errorDiv.classList.remove('show'), 4000);
+            }
+        };
+
+        window.cerrarSesion = async function() {
+            await signOut(auth);
+        };
+
+        // ===== CARGAR TODO =====
+        async function cargarTodo() {
+            await Promise.all([cargarReuniones(), cargarDisponibilidades()]);
+        }
+
+        // ===== CARGAR REUNIONES =====
+        async function cargarReuniones() {
+            try {
+                const snap = await getDocs(collection(db, 'reuniones'));
+                todasReuniones = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                todasReuniones.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.hora.localeCompare(b.hora));
+
+                // Poblar filtros
+                const empresasUnicas = [...new Set(todasReuniones.map(r => r.empresa))].sort();
+                const fechasUnicas = [...new Set(todasReuniones.map(r => r.fecha))].sort();
+
+                const filtroEmp = document.getElementById('filtro-empresa');
+                filtroEmp.innerHTML = '<option value="">Todas las empresas</option>';
+                empresasUnicas.forEach(e => {
+                    const opt = document.createElement('option');
+                    opt.value = e; opt.textContent = e;
+                    filtroEmp.appendChild(opt);
+                });
+
+                const filtroFecha = document.getElementById('filtro-fecha');
+                filtroFecha.innerHTML = '<option value="">Todas las fechas</option>';
+                fechasUnicas.forEach(f => {
+                    const opt = document.createElement('option');
+                    opt.value = f; opt.textContent = f;
+                    filtroFecha.appendChild(opt);
+                });
+
+                renderizarTabla(todasReuniones);
+                actualizarStats();
+                renderizarGraficos();
+                document.getElementById('cargando-reuniones').style.display = 'none';
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('cargando-reuniones').style.display = 'none';
+            }
+        }
+
+        // ===== RENDERIZAR TABLA =====
+        window.filtrarTabla = function() {
+            const empFiltro = document.getElementById('filtro-empresa').value;
+            const fechaFiltro = document.getElementById('filtro-fecha').value;
+            let filtradas = todasReuniones;
+            if (empFiltro) filtradas = filtradas.filter(r => r.empresa === empFiltro);
+            if (fechaFiltro) filtradas = filtradas.filter(r => r.fecha === fechaFiltro);
+            renderizarTabla(filtradas);
+        };
+
+        function renderizarTabla(reuniones) {
+            const tbody = document.getElementById('tbody-reuniones');
+            tbody.innerHTML = '';
+
+            if (reuniones.length === 0) {
+                document.getElementById('tabla-reuniones').style.display = 'none';
+                document.getElementById('sin-reuniones').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('tabla-reuniones').style.display = 'table';
+            document.getElementById('sin-reuniones').style.display = 'none';
+
+            reuniones.forEach(r => {
+                const fila = tbody.insertRow();
+                fila.innerHTML = `
+                    <td><span class="cdn-tag">${r.cdn}</span></td>
+                    <td style="font-size:12px;">${r.cdnEmail || '—'}</td>
+                    <td><span class="empresa-tag">${r.empresa}</span></td>
+                    <td style="font-size:12px;">${r.empresaEmail || '—'}</td>
+                    <td>${r.fecha}</td>
+                    <td><strong>${r.hora}</strong></td>
+                    <td>
+                        <button class="btn btn-danger" onclick="eliminarReunion('${r.id}', '${r.cdn}', '${r.empresa}', '${r.fecha}', '${r.hora}')">
+                            🗑️ Eliminar
+                        </button>
+                    </td>
+                `;
+            });
+        }
+
+        // ===== ELIMINAR REUNIÓN =====
+        window.eliminarReunion = async function(id, cdn, empresa, fecha, hora) {
+            if (!confirm(`¿Eliminar esta reunión?\n\nCDN: ${cdn}\nEmpresa: ${empresa}\nFecha: ${fecha} a las ${hora}`)) return;
+
+            try {
+                await deleteDoc(doc(db, 'reuniones', id));
+
+                // También liberar el slot
+                const slotKey = `${empresa}_${fecha}_${hora}`.replace(/[^a-zA-Z0-9_]/g, '_');
+                await deleteDoc(doc(db, 'horarios_tomados', slotKey));
+
+                await cargarReuniones();
+                alert('✅ Reunión eliminada correctamente');
+            } catch (error) {
+                alert('❌ Error al eliminar. Intenta nuevamente.');
+                console.error(error);
+            }
+        };
+
+        // ===== CARGAR DISPONIBILIDADES =====
+        async function cargarDisponibilidades() {
+            const contenedor = document.getElementById('lista-disponibilidades');
+            try {
+                const snap = await getDocs(collection(db, 'disponibilidades'));
+                todasDisponibilidades = snap.docs.map(d => d.data());
+                todasDisponibilidades.sort((a, b) => a.empresa.localeCompare(b.empresa));
+
+                contenedor.innerHTML = '';
+                document.getElementById('cargando-disp').style.display = 'none';
+
+                if (todasDisponibilidades.length === 0) {
+                    contenedor.innerHTML = '<div class="info-box">Ninguna empresa ha registrado disponibilidad aún.</div>';
+                    return;
+                }
+
+                todasDisponibilidades.forEach(datos => {
+                    const fechasUnicas = [...new Set(datos.horarios.map(h => h.fecha))];
+                    const div = document.createElement('div');
+                    div.style.cssText = 'background:#fafafa; border:1px solid #eee; border-radius:10px; padding:15px; margin-bottom:12px; border-left:4px solid #c0392b;';
+                    div.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <strong>${datos.empresa}</strong>
+                            <span class="badge badge-green">${datos.horarios.length} horarios</span>
+                        </div>
+                        <div style="font-size:12px; color:#777; margin-bottom:8px;">📧 ${datos.email}</div>
+                        <div style="font-size:12px; color:#999;">📅 Fechas: ${fechasUnicas.length} días — ${fechasUnicas.join(', ')}</div>
+                    `;
+                    contenedor.appendChild(div);
+                });
+
+            } catch (error) {
+                console.error(error);
+                contenedor.innerHTML = '<div class="mensaje show error">Error al cargar disponibilidades.</div>';
+                document.getElementById('cargando-disp').style.display = 'none';
+            }
+        }
+
+        // ===== STATS =====
+        function actualizarStats() {
+            document.getElementById('stat-reuniones').textContent = todasReuniones.length;
+            document.getElementById('stat-empresas').textContent = todasDisponibilidades.length;
+
+            const cdnUnicos = new Set(todasReuniones.map(r => r.cdn)).size;
+            document.getElementById('stat-cdn').textContent = cdnUnicos;
+
+            const totalSlots = todasDisponibilidades.reduce((acc, d) => acc + d.horarios.length, 0);
+            const slotsLibres = totalSlots - todasReuniones.length;
+            document.getElementById('stat-slots').textContent = slotsLibres > 0 ? slotsLibres : 0;
+        }
+
+        // ===== GRÁFICOS =====
+        function renderizarGraficos() {
+            // Gráfico por empresa
+            const countPorEmpresa = {};
+            todasReuniones.forEach(r => {
+                countPorEmpresa[r.empresa] = (countPorEmpresa[r.empresa] || 0) + 1;
+            });
+            const labelsEmp = Object.keys(countPorEmpresa).sort();
+            const valoresEmp = labelsEmp.map(e => countPorEmpresa[e]);
+
+            if (chartEmpresas) chartEmpresas.destroy();
+            const ctx1 = document.getElementById('chart-empresas').getContext('2d');
+            chartEmpresas = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: labelsEmp,
+                    datasets: [{ label: 'Reuniones', data: valoresEmp, backgroundColor: '#c0392b', borderRadius: 5 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
+
+            // Gráfico por fecha
+            const countPorFecha = {};
+            todasReuniones.forEach(r => {
+                countPorFecha[r.fecha] = (countPorFecha[r.fecha] || 0) + 1;
+            });
+            const labelsFecha = Object.keys(countPorFecha).sort();
+            const valoresFecha = labelsFecha.map(f => countPorFecha[f]);
+
+            if (chartFechas) chartFechas.destroy();
+            const ctx2 = document.getElementById('chart-fechas').getContext('2d');
+            chartFechas = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: labelsFecha,
+                    datasets: [{ label: 'Reuniones', data: valoresFecha, borderColor: '#2c3e50', backgroundColor: 'rgba(44,62,80,0.1)', fill: true, tension: 0.3 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
+        }
+
+        // ===== EXPORTS =====
+        window.descargarCSVReuniones = function() {
+            let csv = 'CDN,Email CDN,Empresa,Email Empresa,Fecha,Hora\n';
+            todasReuniones.forEach(r => {
+                csv += `"${r.cdn}","${r.cdnEmail}","${r.empresa}","${r.empresaEmail || ''}","${r.fecha}","${r.hora}"\n`;
+            });
+            descargarArchivo(csv, 'reuniones_segundo_meetup.csv', 'text/csv');
+        };
+
+        window.descargarCSVDisponibilidades = function() {
+            let csv = 'Empresa,Email,Total Horarios,Fechas\n';
+            todasDisponibilidades.forEach(d => {
+                const fechas = [...new Set(d.horarios.map(h => h.fecha))].join('; ');
+                csv += `"${d.empresa}","${d.email}",${d.horarios.length},"${fechas}"\n`;
+            });
+            descargarArchivo(csv, 'disponibilidades_segundo_meetup.csv', 'text/csv');
+        };
+
+        window.descargarExcelReuniones = function() {
+            // Exportar como CSV con encoding Excel
+            let csv = '\uFEFF'; // BOM para que Excel lo abra correctamente
+            csv += 'CDN\tEmail CDN\tEmpresa\tEmail Empresa\tFecha\tHora\n';
+            todasReuniones.forEach(r => {
+                csv += `${r.cdn}\t${r.cdnEmail}\t${r.empresa}\t${r.empresaEmail || ''}\t${r.fecha}\t${r.hora}\n`;
+            });
+            descargarArchivo(csv, 'reuniones_segundo_meetup.xls', 'application/vnd.ms-excel');
+        };
+
+        function descargarArchivo(contenido, nombre, tipo) {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(new Blob([contenido], { type: `${tipo};charset=utf-8` }));
+            link.download = nombre;
+            link.click();
+        }
+
+        // ===== LIMPIAR TODO =====
+        window.limpiarTodo = async function() {
+            if (!confirm('⚠️ ¿Estás SEGURA? Esto eliminará TODAS las reuniones y disponibilidades. Esta acción NO se puede deshacer.')) return;
+            if (!confirm('⚠️ SEGUNDA CONFIRMACIÓN: ¿Eliminar absolutamente todo?')) return;
+
+            try {
+                const colecciones = ['reuniones', 'disponibilidades', 'horarios_tomados'];
+                for (const col of colecciones) {
+                    const snap = await getDocs(collection(db, col));
+                    for (const d of snap.docs) {
+                        await deleteDoc(doc(db, col, d.id));
+                    }
+                }
+                await cargarTodo();
+                alert('✅ Todos los datos han sido eliminados.');
+            } catch (error) {
+                alert('❌ Error al limpiar. Intenta nuevamente.');
+                console.error(error);
+            }
+        };
+
+        // ===== CAMBIAR TAB =====
+        window.cambiarTab = function(tabId, btn) {
+            document.querySelectorAll('.tab-content-admin').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-admin-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            btn.classList.add('active');
+            if (tabId === 'graficos') renderizarGraficos();
+        };
+    </script>
+</body>
+</html>
