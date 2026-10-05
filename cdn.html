@@ -83,6 +83,21 @@
         </div>
     </div>
 
+    <!-- Verificación email CDN -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('cdn-email').addEventListener('input', function() {
+                const email = this.value;
+                if (email && email.includes('@') && email.includes('.')) {
+                    document.getElementById('verificar-cdn-email-grupo').style.display = 'block';
+                } else {
+                    document.getElementById('verificar-cdn-email-grupo').style.display = 'none';
+                    document.getElementById('cdn-email-verificar').value = '';
+                }
+            });
+        });
+    </script>
+
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -150,14 +165,6 @@
             opt.value = emp;
             opt.textContent = emp;
             selectEmpresa.appendChild(opt);
-        });
-
-        // Mostrar campo de verificación cuando se ingresa email CDN
-        document.getElementById('cdn-email').addEventListener('blur', function() {
-            const email = this.value;
-            if (email && email.includes('@')) {
-                document.getElementById('verificar-cdn-email-grupo').style.display = 'block';
-            }
         });
 
         // ===== ON EMPRESA CHANGE =====

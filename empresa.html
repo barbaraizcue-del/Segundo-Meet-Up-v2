@@ -58,6 +58,21 @@
         </div>
     </div>
 
+    <!-- Verificación email -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('empresa-email').addEventListener('input', function() {
+                const email = this.value;
+                if (email && email.includes('@') && email.includes('.')) {
+                    document.getElementById('verificar-email-grupo').style.display = 'block';
+                } else {
+                    document.getElementById('verificar-email-grupo').style.display = 'none';
+                    document.getElementById('empresa-email-verificar').value = '';
+                }
+            });
+        });
+    </script>
+
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -123,14 +138,6 @@
         });
 
         // ===== ON EMPRESA CHANGE =====
-        // Mostrar campo de verificación cuando se ingresa email
-        document.getElementById('empresa-email').addEventListener('blur', function() {
-            const email = this.value;
-            if (email && email.includes('@')) {
-                document.getElementById('verificar-email-grupo').style.display = 'block';
-            }
-        });
-
         window.onEmpresaChange = async function() {
             const empresa = document.getElementById('empresa-select').value;
             if (!empresa) {
