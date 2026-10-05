@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal CDN — Sistema de Agendamiento Meet Up Sercotec 2026</title>
     <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .email-match { border-color: #27ae60 !important; background: #f0fff4; }
+        .email-nomatch { border-color: #e74c3c !important; background: #fff5f5; }
+        .verificacion-ok { color: #27ae60; font-size: 12px; margin-top: 4px; display: none; }
+        .verificacion-error { color: #e74c3c; font-size: 12px; margin-top: 4px; display: none; }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -12,7 +18,7 @@
             <div class="header-icon">🤝</div>
             <div>
                 <h1>Portal CDN</h1>
-                <p>Agenda tu reunión con una empresa ancla del Meet Up</p>
+                <p>Sistema de Agendamiento Meet Up — Sercotec 2026</p>
             </div>
         </div>
 
@@ -28,13 +34,14 @@
 
             <div class="form-group">
                 <label for="cdn-email">Correo de Contacto:</label>
-                <input type="email" id="cdn-email" placeholder="tu.email@sercotec.cl">
+                <input type="email" id="cdn-email" placeholder="tu.email@sercotec.cl" oninput="mostrarVerificacionCDN()">
             </div>
 
-            <div class="form-group" id="verificar-cdn-email-grupo" style="display:none;">
-                <label for="cdn-email-verificar">Confirma tu correo:</label>
-                <input type="email" id="cdn-email-verificar" placeholder="tu.email@sercotec.cl">
-                <p style="font-size:12px; color:#999; margin-top:4px;">Escribe tu correo nuevamente para verificarlo</p>
+            <div class="form-group" id="verificar-cdn-grupo" style="display:none;">
+                <label for="cdn-email-verificar">Confirma tu correo: <span style="color:#c0392b;">*</span></label>
+                <input type="email" id="cdn-email-verificar" placeholder="Repite tu correo aquí" oninput="verificarEmailsCDN()">
+                <p class="verificacion-ok" id="cdn-ok-msg">✅ Los correos coinciden</p>
+                <p class="verificacion-error" id="cdn-error-msg">❌ Los correos no coinciden</p>
             </div>
 
             <div class="form-group">
@@ -62,14 +69,11 @@
 
                 <div id="horarios-container" style="display:none;">
                     <label>Horarios Disponibles:</label>
-                    <p style="font-size:12px; color:#999; margin: 4px 0 10px;">
-                        🟥 = Ocupado &nbsp; ⬜ = Libre
-                    </p>
+                    <p style="font-size:12px; color:#999; margin: 4px 0 10px;">🔴 = Ocupado &nbsp; ⬜ = Libre</p>
                     <div id="cdn-horarios" class="horarios-grid"></div>
                 </div>
 
                 <input type="hidden" id="horario-seleccionado">
-
                 <button class="btn btn-primary" onclick="agendarReunion()" id="btn-agendar" style="display:none;">
                     ✅ CONFIRMAR REUNIÓN
                 </button>
@@ -83,27 +87,37 @@
         </div>
     </div>
 
-    <!-- Verificación email CDN -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('cdn-email').addEventListener('input', function() {
-                const email = this.value;
-                if (email && email.includes('@') && email.includes('.')) {
-                    document.getElementById('verificar-cdn-email-grupo').style.display = 'block';
-                } else {
-                    document.getElementById('verificar-cdn-email-grupo').style.display = 'none';
-                    document.getElementById('cdn-email-verificar').value = '';
-                }
-            });
-        });
+        function mostrarVerificacionCDN() {
+            const email = document.getElementById('cdn-email').value;
+            const grupo = document.getElementById('verificar-cdn-grupo');
+            if (email.includes('@') && email.includes('.')) {
+                grupo.style.display = 'block';
+            } else {
+                grupo.style.display = 'none';
+                document.getElementById('cdn-email-verificar').value = '';
+                document.getElementById('cdn-ok-msg').style.display = 'none';
+                document.getElementById('cdn-error-msg').style.display = 'none';
+            }
+            verificarEmailsCDN();
+        }
+
+        function verificarEmailsCDN() {
+            const email = document.getElementById('cdn-email').value;
+            const emailV = document.getElementById('cdn-email-verificar').value;
+            const inputV = document.getElementById('cdn-email-verificar');
+            const ok = document.getElementById('cdn-ok-msg');
+            const err = document.getElementById('cdn-error-msg');
+            if (!emailV) { inputV.className = ''; ok.style.display = 'none'; err.style.display = 'none'; return; }
+            if (email === emailV) { inputV.className = 'email-match'; ok.style.display = 'block'; err.style.display = 'none'; }
+            else { inputV.className = 'email-nomatch'; ok.style.display = 'none'; err.style.display = 'block'; }
+        }
     </script>
 
-    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-        // ===== FIREBASE CONFIG =====
         const firebaseConfig = {
             apiKey: "AIzaSyBjWa9R8vFPb9uWZ8sf7_ZIOkq5HOidXOQ",
             authDomain: "segundo-meet-up.firebaseapp.com",
@@ -116,7 +130,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // ===== DATA =====
         const EMPRESAS = [
             "Abastible", "Aeropuerto", "Aliservice", "Andina (Emboteladora y Transporte)",
             "Angloamerican", "Antofagasta Minerals", "Agrosuper", "Aramark",
@@ -146,124 +159,82 @@
             "CDN Villarrica", "CDN Viña del Mar"
         ];
 
-        // ===== ESTADO =====
         let disponibilidadEmpresa = null;
         let horariosOcupados = [];
 
-        // ===== INICIALIZAR SELECTS =====
         const selectCDN = document.getElementById('cdn-select');
         CDN_LIST.forEach(cdn => {
             const opt = document.createElement('option');
-            opt.value = cdn;
-            opt.textContent = cdn;
+            opt.value = cdn; opt.textContent = cdn;
             selectCDN.appendChild(opt);
         });
 
         const selectEmpresa = document.getElementById('empresa-select');
         EMPRESAS.forEach(emp => {
             const opt = document.createElement('option');
-            opt.value = emp;
-            opt.textContent = emp;
+            opt.value = emp; opt.textContent = emp;
             selectEmpresa.appendChild(opt);
         });
 
-        // ===== ON EMPRESA CHANGE =====
         window.onEmpresaChange = async function() {
             const empresa = document.getElementById('empresa-select').value;
-
-            // Reset
             document.getElementById('fechas-container').style.display = 'none';
             document.getElementById('sin-disponibilidad').style.display = 'none';
             document.getElementById('horarios-container').style.display = 'none';
             document.getElementById('btn-agendar').style.display = 'none';
             document.getElementById('horario-seleccionado').value = '';
             document.getElementById('fecha-select').innerHTML = '<option value="">-- Selecciona una fecha --</option>';
-
             if (!empresa) return;
 
             document.getElementById('cargando-fechas').style.display = 'block';
-
             try {
-                // Cargar disponibilidad de la empresa
                 const docSnap = await getDoc(doc(db, 'disponibilidades', empresa));
-
                 if (!docSnap.exists() || !docSnap.data().horarios?.length) {
                     document.getElementById('sin-disponibilidad').style.display = 'block';
                     document.getElementById('cargando-fechas').style.display = 'none';
                     return;
                 }
-
                 disponibilidadEmpresa = docSnap.data();
-
-                // Cargar horarios ocupados de esta empresa
-                const reunionesRef = collection(db, 'reuniones');
-                const q = query(reunionesRef, where('empresa', '==', empresa));
+                const q = query(collection(db, 'reuniones'), where('empresa', '==', empresa));
                 const querySnap = await getDocs(q);
-                horariosOcupados = querySnap.docs.map(d => ({
-                    fecha: d.data().fecha,
-                    hora: d.data().hora
-                }));
+                horariosOcupados = querySnap.docs.map(d => ({ fecha: d.data().fecha, hora: d.data().hora }));
 
-                // Poblar select de fechas (solo las que tienen horarios disponibles)
                 const fechasUnicas = [...new Set(disponibilidadEmpresa.horarios.map(h => h.fecha))].sort();
                 const selectFecha = document.getElementById('fecha-select');
                 fechasUnicas.forEach(fecha => {
                     const fechaObj = new Date(fecha + 'T12:00:00');
                     const nombre = fechaObj.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
-
-                    // Verificar si quedan horarios libres en esa fecha
                     const horariosEnFecha = disponibilidadEmpresa.horarios.filter(h => h.fecha === fecha);
                     const libres = horariosEnFecha.filter(h => !horariosOcupados.some(o => o.fecha === h.fecha && o.hora === h.hora));
-
                     const opt = document.createElement('option');
                     opt.value = fecha;
                     opt.textContent = `${nombre} (${libres.length} horarios libres)`;
-                    if (libres.length === 0) {
-                        opt.textContent += ' — COMPLETO';
-                        opt.style.color = '#bbb';
-                    }
+                    if (libres.length === 0) { opt.textContent += ' — COMPLETO'; opt.style.color = '#bbb'; }
                     selectFecha.appendChild(opt);
                 });
-
                 document.getElementById('fechas-container').style.display = 'block';
-
             } catch (error) {
-                console.error(error);
-                mostrarMensaje('cdn-mensaje', '❌ Error al cargar disponibilidad. Intenta nuevamente.', false);
+                mostrarMensaje('cdn-mensaje', '❌ Error al cargar disponibilidad.', false);
             }
-
             document.getElementById('cargando-fechas').style.display = 'none';
         };
 
-        // ===== ON FECHA CHANGE =====
         window.onFechaChange = function() {
             const fecha = document.getElementById('fecha-select').value;
             document.getElementById('horario-seleccionado').value = '';
             document.getElementById('btn-agendar').style.display = 'none';
+            if (!fecha || !disponibilidadEmpresa) { document.getElementById('horarios-container').style.display = 'none'; return; }
 
-            if (!fecha || !disponibilidadEmpresa) {
-                document.getElementById('horarios-container').style.display = 'none';
-                return;
-            }
-
-            const horariosEnFecha = disponibilidadEmpresa.horarios
-                .filter(h => h.fecha === fecha)
-                .map(h => h.hora)
-                .sort();
-
+            const horariosEnFecha = disponibilidadEmpresa.horarios.filter(h => h.fecha === fecha).map(h => h.hora).sort();
             const contenedor = document.getElementById('cdn-horarios');
             contenedor.innerHTML = '';
-
             horariosEnFecha.forEach(hora => {
                 const ocupado = horariosOcupados.some(o => o.fecha === fecha && o.hora === hora);
-
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = `horario-btn ${ocupado ? 'ocupado' : ''}`;
                 btn.textContent = ocupado ? `${hora} 🔴` : hora;
-                btn.dataset.hora = hora;
                 btn.disabled = ocupado;
-
                 if (!ocupado) {
                     btn.onclick = () => {
                         document.querySelectorAll('#cdn-horarios .horario-btn').forEach(b => b.classList.remove('selected'));
@@ -272,25 +243,23 @@
                         document.getElementById('btn-agendar').style.display = 'flex';
                     };
                 }
-
                 contenedor.appendChild(btn);
             });
-
             document.getElementById('horarios-container').style.display = 'block';
         };
 
-        // ===== AGENDAR REUNIÓN =====
         window.agendarReunion = async function() {
             const cdn = document.getElementById('cdn-select').value;
             const cdnEmail = document.getElementById('cdn-email').value;
+            const cdnEmailV = document.getElementById('cdn-email-verificar').value;
             const empresa = document.getElementById('empresa-select').value;
             const fecha = document.getElementById('fecha-select').value;
             const hora = document.getElementById('horario-seleccionado').value;
 
             if (!cdn) { mostrarMensaje('cdn-mensaje', '❌ Selecciona tu CDN', false); return; }
             if (!cdnEmail) { mostrarMensaje('cdn-mensaje', '❌ Ingresa tu email', false); return; }
-            const cdnEmailVerificar = document.getElementById('cdn-email-verificar').value;
-            if (cdnEmail !== cdnEmailVerificar) { mostrarMensaje('cdn-mensaje', '❌ Los correos no coinciden. Por favor verifica tu email.', false); return; }
+            if (!cdnEmailV) { mostrarMensaje('cdn-mensaje', '❌ Debes confirmar tu correo electrónico', false); return; }
+            if (cdnEmail !== cdnEmailV) { mostrarMensaje('cdn-mensaje', '❌ Los correos no coinciden. Por favor verifica.', false); return; }
             if (!empresa) { mostrarMensaje('cdn-mensaje', '❌ Selecciona una empresa', false); return; }
             if (!hora) { mostrarMensaje('cdn-mensaje', '❌ Selecciona un horario', false); return; }
 
@@ -299,103 +268,44 @@
             btnAgendar.textContent = '⏳ Agendando...';
 
             try {
-                // ===== VERIFICAR DUPLICADO EN TIEMPO REAL =====
                 const slotKey = `${empresa}_${fecha}_${hora}`.replace(/[^a-zA-Z0-9_]/g, '_');
-                const slotRef = doc(db, 'horarios_tomados', slotKey);
-                const slotSnap = await getDoc(slotRef);
-
+                const slotSnap = await getDoc(doc(db, 'horarios_tomados', slotKey));
                 if (slotSnap.exists()) {
-                    mostrarMensaje('cdn-mensaje', '❌ Lo sentimos, este horario fue tomado hace un momento. Por favor selecciona otro.', false);
+                    mostrarMensaje('cdn-mensaje', '❌ Este horario ya fue tomado. Selecciona otro.', false);
                     btnAgendar.disabled = false;
                     btnAgendar.textContent = '✅ CONFIRMAR REUNIÓN';
-                    // Recargar horarios para mostrar el ocupado
-                    await onEmpresaChange();
-                    document.getElementById('empresa-select').dispatchEvent(new Event('change'));
                     return;
                 }
 
-                // ===== GUARDAR REUNIÓN =====
                 const reunionId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                 const reunion = {
-                    cdn,
-                    cdnEmail,
-                    empresa,
+                    cdn, cdnEmail, empresa,
                     empresaEmail: disponibilidadEmpresa?.email || '',
-                    fecha,
-                    hora,
-                    timestamp: new Date().toISOString()
+                    fecha, hora, timestamp: new Date().toISOString()
                 };
 
-                // Guardar reunión y marcar slot como tomado (casi simultáneo)
                 await Promise.all([
                     setDoc(doc(db, 'reuniones', reunionId), reunion),
-                    setDoc(slotRef, { empresa, fecha, hora, cdn, timestamp: new Date().toISOString() })
+                    setDoc(doc(db, 'horarios_tomados', slotKey), { empresa, fecha, hora, cdn, timestamp: new Date().toISOString() })
                 ]);
 
-                // ===== ENVIAR EMAIL =====
-                await enviarEmailConfirmacion(reunion);
+                mostrarMensaje('cdn-mensaje', `✅ ¡Reunión confirmada! ${cdn} con ${empresa} el ${fecha} a las ${hora}. Recibirás un email de confirmación en breve.`, true);
 
-                mostrarMensaje('cdn-mensaje',
-                    `✅ ¡Reunión confirmada! ${cdn} se reunirá con ${empresa} el ${fecha} a las ${hora}. Se ha enviado un email de confirmación.`,
-                    true
-                );
-
-                // Reset formulario
                 document.getElementById('cdn-select').value = '';
                 document.getElementById('cdn-email').value = '';
+                document.getElementById('cdn-email-verificar').value = '';
                 document.getElementById('empresa-select').value = '';
+                document.getElementById('verificar-cdn-grupo').style.display = 'none';
                 document.getElementById('fechas-container').style.display = 'none';
                 document.getElementById('horarios-container').style.display = 'none';
                 document.getElementById('btn-agendar').style.display = 'none';
 
             } catch (error) {
-                console.error(error);
                 mostrarMensaje('cdn-mensaje', '❌ Error al agendar. Intenta nuevamente.', false);
             }
-
             btnAgendar.disabled = false;
             btnAgendar.textContent = '✅ CONFIRMAR REUNIÓN';
         };
-
-        // ===== ENVIAR EMAIL CON WEB3FORMS =====
-        async function enviarEmailConfirmacion(reunion) {
-            const WEB3FORMS_KEY = '362e3bf4-f834-44aa-920d-01b9e3b718eb';
-
-            const mensaje = `
-✅ REUNIÓN CONFIRMADA — Sistema de Agendamiento Meet Up Sercotec 2026
-
-📋 Detalles:
-• CDN: ${reunion.cdn}
-• Empresa: ${reunion.empresa}
-• Fecha: ${reunion.fecha}
-• Hora: ${reunion.hora}
-
-📧 Contacto CDN: ${reunion.cdnEmail}
-📧 Contacto Empresa: ${reunion.empresaEmail || 'No registrado'}
-
-Este mensaje fue enviado automáticamente por el Sistema de Agendamiento Sercotec.
-            `.trim();
-
-            const destinatarios = [reunion.cdnEmail, reunion.empresaEmail].filter(Boolean);
-
-            for (const email of destinatarios) {
-                try {
-                    await fetch('https://api.web3forms.com/submit', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            access_key: WEB3FORMS_KEY,
-                            to: email,
-                            subject: `✅ Reunión confirmada: ${reunion.cdn} con ${reunion.empresa} — ${reunion.fecha} ${reunion.hora}`,
-                            message: mensaje,
-                            from_name: 'Sercotec Meet Up'
-                        })
-                    });
-                } catch (error) {
-                    console.warn(`Email no enviado a ${email}:`, error);
-                }
-            }
-        }
 
         function mostrarMensaje(id, texto, exito) {
             const div = document.getElementById(id);
