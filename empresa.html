@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal Empresa — Sistema de Agendamiento Meet Up Sercotec 2026</title>
     <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .email-match { border-color: #27ae60 !important; background: #f0fff4; }
+        .email-nomatch { border-color: #e74c3c !important; background: #fff5f5; }
+        .verificacion-ok { color: #27ae60; font-size: 12px; margin-top: 4px; display: none; }
+        .verificacion-error { color: #e74c3c; font-size: 12px; margin-top: 4px; display: none; }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -12,7 +18,7 @@
             <div class="header-icon">🏢</div>
             <div>
                 <h1>Portal Empresa</h1>
-                <p>Registra tu disponibilidad de horarios para reunirte con los CDN</p>
+                <p>Sistema de Agendamiento Meet Up — Sercotec 2026</p>
             </div>
         </div>
 
@@ -28,13 +34,14 @@
 
             <div class="form-group">
                 <label for="empresa-email">Correo de Contacto:</label>
-                <input type="email" id="empresa-email" placeholder="contacto@empresa.com">
+                <input type="email" id="empresa-email" placeholder="contacto@empresa.com" oninput="mostrarVerificacion()">
             </div>
 
             <div class="form-group" id="verificar-email-grupo" style="display:none;">
-                <label for="empresa-email-verificar">Confirma tu correo:</label>
-                <input type="email" id="empresa-email-verificar" placeholder="contacto@empresa.com">
-                <p style="font-size:12px; color:#999; margin-top:4px;">Escribe tu correo nuevamente para verificarlo</p>
+                <label for="empresa-email-verificar">Confirma tu correo: <span style="color:#c0392b;">*</span></label>
+                <input type="email" id="empresa-email-verificar" placeholder="Repite tu correo aquí" oninput="verificarEmails()">
+                <p class="verificacion-ok" id="ok-msg">✅ Los correos coinciden</p>
+                <p class="verificacion-error" id="error-msg">❌ Los correos no coinciden</p>
             </div>
 
             <div id="disponibilidad-previa" style="display:none;" class="info-box">
@@ -43,7 +50,7 @@
 
             <div id="empresa-fechas-container" style="display:none;">
                 <h3>Selecciona tus horarios disponibles:</h3>
-                <p style="font-size:13px; color:#777; margin-bottom:15px;">Haz click en cada horario en que puedes reunirte. Puedes seleccionar todos los que necesites.</p>
+                <p style="font-size:13px; color:#777; margin-bottom:15px;">Haz click en cada horario en que puedes reunirte.</p>
                 <div id="empresa-fechas"></div>
                 <button class="btn btn-primary" onclick="guardarDisponibilidad()">
                     💾 GUARDAR DISPONIBILIDAD
@@ -58,27 +65,51 @@
         </div>
     </div>
 
-    <!-- Verificación email -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('empresa-email').addEventListener('input', function() {
-                const email = this.value;
-                if (email && email.includes('@') && email.includes('.')) {
-                    document.getElementById('verificar-email-grupo').style.display = 'block';
-                } else {
-                    document.getElementById('verificar-email-grupo').style.display = 'none';
-                    document.getElementById('empresa-email-verificar').value = '';
-                }
-            });
-        });
+        function mostrarVerificacion() {
+            const email = document.getElementById('empresa-email').value;
+            const grupo = document.getElementById('verificar-email-grupo');
+            if (email.includes('@') && email.includes('.')) {
+                grupo.style.display = 'block';
+            } else {
+                grupo.style.display = 'none';
+                document.getElementById('empresa-email-verificar').value = '';
+                document.getElementById('ok-msg').style.display = 'none';
+                document.getElementById('error-msg').style.display = 'none';
+            }
+            verificarEmails();
+        }
+
+        function verificarEmails() {
+            const email = document.getElementById('empresa-email').value;
+            const emailV = document.getElementById('empresa-email-verificar').value;
+            const inputV = document.getElementById('empresa-email-verificar');
+            const ok = document.getElementById('ok-msg');
+            const err = document.getElementById('error-msg');
+
+            if (!emailV) {
+                inputV.className = '';
+                ok.style.display = 'none';
+                err.style.display = 'none';
+                return;
+            }
+
+            if (email === emailV) {
+                inputV.className = 'email-match';
+                ok.style.display = 'block';
+                err.style.display = 'none';
+            } else {
+                inputV.className = 'email-nomatch';
+                ok.style.display = 'none';
+                err.style.display = 'block';
+            }
+        }
     </script>
 
-    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-        // ===== FIREBASE CONFIG =====
         const firebaseConfig = {
             apiKey: "AIzaSyBjWa9R8vFPb9uWZ8sf7_ZIOkq5HOidXOQ",
             authDomain: "segundo-meet-up.firebaseapp.com",
@@ -91,7 +122,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // ===== DATA =====
         const EMPRESAS = [
             "Abastible", "Aeropuerto", "Aliservice", "Andina (Emboteladora y Transporte)",
             "Angloamerican", "Antofagasta Minerals", "Agrosuper", "Aramark",
@@ -106,9 +136,8 @@
             const fechas = [];
             for (let i = 4; i <= 29; i++) {
                 const fecha = new Date(2026, 10, i);
-                if (fecha.getDay() !== 0 && fecha.getDay() !== 6) {
+                if (fecha.getDay() !== 0 && fecha.getDay() !== 6)
                     fechas.push(`2026-11-${String(i).padStart(2, '0')}`);
-                }
             }
             return fechas;
         }
@@ -128,7 +157,6 @@
         const FECHAS = obtenerFechas();
         const HORARIOS = obtenerHorarios();
 
-        // ===== INICIALIZAR SELECTS =====
         const selectEmpresa = document.getElementById('empresa-select');
         EMPRESAS.forEach(emp => {
             const opt = document.createElement('option');
@@ -137,28 +165,25 @@
             selectEmpresa.appendChild(opt);
         });
 
-        // ===== ON EMPRESA CHANGE =====
         window.onEmpresaChange = async function() {
             const empresa = document.getElementById('empresa-select').value;
             if (!empresa) {
                 document.getElementById('empresa-fechas-container').style.display = 'none';
                 return;
             }
-
-            // Verificar si ya tiene disponibilidad
             const docRef = doc(db, 'disponibilidades', empresa);
             const docSnap = await getDoc(docRef);
-
             const previaDiv = document.getElementById('disponibilidad-previa');
             if (docSnap.exists()) {
                 previaDiv.style.display = 'block';
-                // Pre-cargar email
-                document.getElementById('empresa-email').value = docSnap.data().email || '';
+                const emailGuardado = docSnap.data().email || '';
+                document.getElementById('empresa-email').value = emailGuardado;
+                if (emailGuardado) {
+                    document.getElementById('verificar-email-grupo').style.display = 'block';
+                }
             } else {
                 previaDiv.style.display = 'none';
             }
-
-            // Renderizar fechas y horarios
             renderizarFechas(docSnap.exists() ? docSnap.data().horarios || [] : []);
             document.getElementById('empresa-fechas-container').style.display = 'block';
         };
@@ -166,18 +191,14 @@
         function renderizarFechas(horariosSeleccionados = []) {
             const contenedor = document.getElementById('empresa-fechas');
             contenedor.innerHTML = '';
-
             FECHAS.forEach(fecha => {
                 const grupoDiv = document.createElement('div');
                 grupoDiv.className = 'fecha-grupo';
-
                 const fechaObj = new Date(fecha + 'T12:00:00');
                 const nombreDia = fechaObj.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
                 grupoDiv.innerHTML = `<div class="fecha-titulo">📅 ${nombreDia}</div>`;
-
                 const horariosDiv = document.createElement('div');
                 horariosDiv.className = 'horarios-grid';
-
                 HORARIOS.forEach(hora => {
                     const btn = document.createElement('button');
                     btn.type = 'button';
@@ -185,61 +206,48 @@
                     btn.textContent = hora;
                     btn.dataset.fecha = fecha;
                     btn.dataset.hora = hora;
-
-                    // Si ya estaba seleccionado, marcarlo
-                    const yaSeleccionado = horariosSeleccionados.some(h => h.fecha === fecha && h.hora === hora);
-                    if (yaSeleccionado) btn.classList.add('selected');
-
+                    if (horariosSeleccionados.some(h => h.fecha === fecha && h.hora === hora))
+                        btn.classList.add('selected');
                     btn.onclick = () => btn.classList.toggle('selected');
                     horariosDiv.appendChild(btn);
                 });
-
                 grupoDiv.appendChild(horariosDiv);
                 contenedor.appendChild(grupoDiv);
             });
         }
 
-        // ===== GUARDAR DISPONIBILIDAD =====
         window.guardarDisponibilidad = async function() {
             const empresa = document.getElementById('empresa-select').value;
             const email = document.getElementById('empresa-email').value;
+            const emailV = document.getElementById('empresa-email-verificar').value;
 
             if (!empresa) { mostrarMensaje('empresa-mensaje', '❌ Selecciona una empresa', false); return; }
             if (!email) { mostrarMensaje('empresa-mensaje', '❌ Ingresa un email de contacto', false); return; }
-            const emailVerificar = document.getElementById('empresa-email-verificar').value;
-            if (email !== emailVerificar) { mostrarMensaje('empresa-mensaje', '❌ Los correos no coinciden. Por favor verifica tu email.', false); return; }
+            if (!emailV) { mostrarMensaje('empresa-mensaje', '❌ Debes confirmar tu correo electrónico', false); return; }
+            if (email !== emailV) { mostrarMensaje('empresa-mensaje', '❌ Los correos no coinciden. Por favor verifica.', false); return; }
 
             const botones = document.querySelectorAll('#empresa-fechas .horario-btn.selected');
-            if (botones.length === 0) {
-                mostrarMensaje('empresa-mensaje', '❌ Selecciona al menos un horario disponible', false);
-                return;
-            }
+            if (botones.length === 0) { mostrarMensaje('empresa-mensaje', '❌ Selecciona al menos un horario disponible', false); return; }
 
             const horarios = [];
             botones.forEach(btn => horarios.push({ fecha: btn.dataset.fecha, hora: btn.dataset.hora }));
 
-            const btn = document.querySelector('.btn-primary');
-            btn.disabled = true;
-            btn.textContent = '⏳ Guardando...';
+            const btnGuardar = document.querySelector('.btn-primary');
+            btnGuardar.disabled = true;
+            btnGuardar.textContent = '⏳ Guardando...';
 
             try {
                 await setDoc(doc(db, 'disponibilidades', empresa), {
-                    empresa,
-                    email,
-                    horarios,
-                    timestamp: new Date().toISOString()
+                    empresa, email, horarios, timestamp: new Date().toISOString()
                 });
-
-                mostrarMensaje('empresa-mensaje', `✅ ¡Listo! ${empresa} registró ${horarios.length} horarios disponibles correctamente.`, true);
+                mostrarMensaje('empresa-mensaje', `✅ ¡Listo! ${empresa} registró ${horarios.length} horarios disponibles.`, true);
                 document.getElementById('disponibilidad-previa').style.display = 'block';
-
             } catch (error) {
                 mostrarMensaje('empresa-mensaje', '❌ Error al guardar. Intenta nuevamente.', false);
-                console.error(error);
             }
 
-            btn.disabled = false;
-            btn.textContent = '💾 GUARDAR DISPONIBILIDAD';
+            btnGuardar.disabled = false;
+            btnGuardar.textContent = '💾 GUARDAR DISPONIBILIDAD';
         };
 
         function mostrarMensaje(id, texto, exito) {
