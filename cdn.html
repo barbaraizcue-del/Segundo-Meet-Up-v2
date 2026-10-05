@@ -77,12 +77,6 @@
         </div>
     </div>
 
-    <!-- CONFIG -->
-    <script>
-        // Configuración de emails
-        window.RESEND_KEY = 're_ZmucnubR' + '_6i52cv8UMnyYi2o1cVZQZSUq';
-    </script>
-
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -340,68 +334,43 @@
             btnAgendar.textContent = '✅ CONFIRMAR REUNIÓN';
         };
 
-        // ===== ENVIAR EMAIL CON RESEND =====
+        // ===== ENVIAR EMAIL CON WEB3FORMS =====
         async function enviarEmailConfirmacion(reunion) {
-            try {
-                const RESEND_API_KEY = window.RESEND_KEY || '';
+            const WEB3FORMS_KEY = '362e3bf4-f834-44aa-920d-01b9e3b718eb';
 
-                const htmlEmail = `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <div style="background: #c0392b; color: white; padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
-                            <h1 style="margin:0;">✅ Reunión Confirmada</h1>
-                            <p style="margin: 8px 0 0; opacity: 0.9;">Segundo Meet Up Sercotec 2026</p>
-                        </div>
-                        <div style="background: #f9f9f9; padding: 25px; border-radius: 0 0 8px 8px;">
-                            <h2 style="color: #333;">Detalles de tu reunión:</h2>
-                            <table style="width: 100%; border-collapse: collapse;">
-                                <tr><td style="padding: 8px; font-weight: bold; color: #555;">CDN:</td><td style="padding: 8px;">${reunion.cdn}</td></tr>
-                                <tr style="background: #fff;"><td style="padding: 8px; font-weight: bold; color: #555;">Empresa:</td><td style="padding: 8px;">${reunion.empresa}</td></tr>
-                                <tr><td style="padding: 8px; font-weight: bold; color: #555;">Fecha:</td><td style="padding: 8px;">${reunion.fecha}</td></tr>
-                                <tr style="background: #fff;"><td style="padding: 8px; font-weight: bold; color: #555;">Hora:</td><td style="padding: 8px;">${reunion.hora}</td></tr>
-                            </table>
-                            <p style="color: #777; font-size: 13px; margin-top: 20px;">
-                                Este email fue enviado automáticamente por el Sistema de Agendamiento Sercotec.
-                            </p>
-                        </div>
-                    </div>
-                `;
+            const mensaje = `
+✅ REUNIÓN CONFIRMADA — Segundo Meet Up Sercotec 2026
 
-                // Email al CDN
-                if (reunion.cdnEmail) {
-                    await fetch('https://api.resend.com/emails', {
+📋 Detalles:
+• CDN: ${reunion.cdn}
+• Empresa: ${reunion.empresa}
+• Fecha: ${reunion.fecha}
+• Hora: ${reunion.hora}
+
+📧 Contacto CDN: ${reunion.cdnEmail}
+📧 Contacto Empresa: ${reunion.empresaEmail || 'No registrado'}
+
+Este mensaje fue enviado automáticamente por el Sistema de Agendamiento Sercotec.
+            `.trim();
+
+            const destinatarios = [reunion.cdnEmail, reunion.empresaEmail].filter(Boolean);
+
+            for (const email of destinatarios) {
+                try {
+                    await fetch('https://api.web3forms.com/submit', {
                         method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${RESEND_API_KEY}`,
-                            'Content-Type': 'application/json'
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            from: 'Sercotec Meet Up <onboarding@resend.dev>',
-                            to: [reunion.cdnEmail],
+                            access_key: WEB3FORMS_KEY,
+                            to: email,
                             subject: `✅ Reunión confirmada: ${reunion.cdn} con ${reunion.empresa} — ${reunion.fecha} ${reunion.hora}`,
-                            html: htmlEmail
+                            message: mensaje,
+                            from_name: 'Sercotec Meet Up'
                         })
                     });
+                } catch (error) {
+                    console.warn(`Email no enviado a ${email}:`, error);
                 }
-
-                // Email a la Empresa
-                if (reunion.empresaEmail) {
-                    await fetch('https://api.resend.com/emails', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${RESEND_API_KEY}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            from: 'Sercotec Meet Up <onboarding@resend.dev>',
-                            to: [reunion.empresaEmail],
-                            subject: `📅 Nueva reunión agendada: ${reunion.cdn} el ${reunion.fecha} a las ${reunion.hora}`,
-                            html: htmlEmail
-                        })
-                    });
-                }
-
-            } catch (error) {
-                console.warn('Email no enviado (configura Resend API Key):', error);
             }
         }
 
