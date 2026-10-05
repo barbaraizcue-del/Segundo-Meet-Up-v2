@@ -178,11 +178,14 @@
                 previaDiv.style.display = 'block';
                 const emailGuardado = docSnap.data().email || '';
                 document.getElementById('empresa-email').value = emailGuardado;
-                if (emailGuardado) {
-                    document.getElementById('verificar-email-grupo').style.display = 'block';
-                }
+                // Limpiar verificación para que tenga que reconfirmar
+                document.getElementById('empresa-email-verificar').value = '';
+                document.getElementById('verificar-email-grupo').style.display = 'block';
+                document.getElementById('ok-msg').style.display = 'none';
+                document.getElementById('error-msg').style.display = 'none';
             } else {
                 previaDiv.style.display = 'none';
+                document.getElementById('verificar-email-grupo').style.display = 'none';
             }
             renderizarFechas(docSnap.exists() ? docSnap.data().horarios || [] : []);
             document.getElementById('empresa-fechas-container').style.display = 'block';
