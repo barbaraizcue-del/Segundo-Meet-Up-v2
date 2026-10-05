@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal Empresa — Segundo Meet Up Sercotec</title>
+    <title>Portal Empresa — Sistema de Agendamiento Meet Up Sercotec 2026</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -29,6 +29,12 @@
             <div class="form-group">
                 <label for="empresa-email">Correo de Contacto:</label>
                 <input type="email" id="empresa-email" placeholder="contacto@empresa.com">
+            </div>
+
+            <div class="form-group" id="verificar-email-grupo" style="display:none;">
+                <label for="empresa-email-verificar">Confirma tu correo:</label>
+                <input type="email" id="empresa-email-verificar" placeholder="contacto@empresa.com">
+                <p style="font-size:12px; color:#999; margin-top:4px;">Escribe tu correo nuevamente para verificarlo</p>
             </div>
 
             <div id="disponibilidad-previa" style="display:none;" class="info-box">
@@ -117,6 +123,14 @@
         });
 
         // ===== ON EMPRESA CHANGE =====
+        // Mostrar campo de verificación cuando se ingresa email
+        document.getElementById('empresa-email').addEventListener('blur', function() {
+            const email = this.value;
+            if (email && email.includes('@')) {
+                document.getElementById('verificar-email-grupo').style.display = 'block';
+            }
+        });
+
         window.onEmpresaChange = async function() {
             const empresa = document.getElementById('empresa-select').value;
             if (!empresa) {
@@ -185,6 +199,8 @@
 
             if (!empresa) { mostrarMensaje('empresa-mensaje', '❌ Selecciona una empresa', false); return; }
             if (!email) { mostrarMensaje('empresa-mensaje', '❌ Ingresa un email de contacto', false); return; }
+            const emailVerificar = document.getElementById('empresa-email-verificar').value;
+            if (email !== emailVerificar) { mostrarMensaje('empresa-mensaje', '❌ Los correos no coinciden. Por favor verifica tu email.', false); return; }
 
             const botones = document.querySelectorAll('#empresa-fechas .horario-btn.selected');
             if (botones.length === 0) {

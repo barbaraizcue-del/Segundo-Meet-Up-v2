@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal CDN — Segundo Meet Up Sercotec</title>
+    <title>Portal CDN — Sistema de Agendamiento Meet Up Sercotec 2026</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -29,6 +29,12 @@
             <div class="form-group">
                 <label for="cdn-email">Correo de Contacto:</label>
                 <input type="email" id="cdn-email" placeholder="tu.email@sercotec.cl">
+            </div>
+
+            <div class="form-group" id="verificar-cdn-email-grupo" style="display:none;">
+                <label for="cdn-email-verificar">Confirma tu correo:</label>
+                <input type="email" id="cdn-email-verificar" placeholder="tu.email@sercotec.cl">
+                <p style="font-size:12px; color:#999; margin-top:4px;">Escribe tu correo nuevamente para verificarlo</p>
             </div>
 
             <div class="form-group">
@@ -144,6 +150,14 @@
             opt.value = emp;
             opt.textContent = emp;
             selectEmpresa.appendChild(opt);
+        });
+
+        // Mostrar campo de verificación cuando se ingresa email CDN
+        document.getElementById('cdn-email').addEventListener('blur', function() {
+            const email = this.value;
+            if (email && email.includes('@')) {
+                document.getElementById('verificar-cdn-email-grupo').style.display = 'block';
+            }
         });
 
         // ===== ON EMPRESA CHANGE =====
@@ -268,6 +282,8 @@
 
             if (!cdn) { mostrarMensaje('cdn-mensaje', '❌ Selecciona tu CDN', false); return; }
             if (!cdnEmail) { mostrarMensaje('cdn-mensaje', '❌ Ingresa tu email', false); return; }
+            const cdnEmailVerificar = document.getElementById('cdn-email-verificar').value;
+            if (cdnEmail !== cdnEmailVerificar) { mostrarMensaje('cdn-mensaje', '❌ Los correos no coinciden. Por favor verifica tu email.', false); return; }
             if (!empresa) { mostrarMensaje('cdn-mensaje', '❌ Selecciona una empresa', false); return; }
             if (!hora) { mostrarMensaje('cdn-mensaje', '❌ Selecciona un horario', false); return; }
 
